@@ -1,17 +1,15 @@
 import streamlit as st
 import sympy as sp
 import random
-import pdfkit
-import platform
 
 # 웹페이지 기본 설정
 st.set_page_config(page_title="AI 수학 문제 생성기", page_icon="📝")
 x = sp.Symbol('x')
 
 # -----------------------------------------------------------
-# PDF 생성 함수
+# ⭐ [클라우드 완벽 대응] HTML 문서 생성 함수 (PDF 변환 에러 원천 차단)
 # -----------------------------------------------------------
-def create_pdf_document(math_type, items, is_solution=False):
+def create_html_document(math_type, items, is_solution=False):
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -51,18 +49,9 @@ def create_pdf_document(math_type, items, is_solution=False):
             
     html_content += "</body></html>"
     
-    # 🌟 [클라우드용 개조 완료] 접속한 컴퓨터가 윈도우인지 리눅스인지 스스로 판단합니다!
-    if platform.system() == "Windows":
-        # 선생님 컴퓨터 (윈도우)
-        path_wkhtmltopdf = r'C:\Users\USER\wkhtmltopdf\bin\wkhtmltopdf.exe'
-        config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
-    else:
-        # 클라우드 서버 (리눅스)
-        config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
-    
-    options = dict(encoding="UTF-8", **{"javascript-delay": "2000", "enable-javascript": ""})
-    
-    return pdfkit.from_string(html_content, False, configuration=config, options=options)
+    # 텍스트 문서(HTML) 자체를 utf-8 포맷으로 안전하게 내보냅니다!
+    return html_content.encode('utf-8')
+
 # -----------------------------------------------------------
 # 메인 UI 및 문제 생성 로직
 # -----------------------------------------------------------
@@ -101,7 +90,6 @@ if st.session_state.show_problems:
     for i in range(1, st.session_state.saved_num_prob + 1):
         curr_type = st.session_state.saved_math_type
         
-        # [1. 일차방정식]
         if curr_type == "일차방정식":
             root = random.randint(-10, 10)
             expr = x - root
@@ -114,7 +102,6 @@ if st.session_state.show_problems:
                 st.write("상수항을 우변으로 이항하여 기호를 바꾼 뒤 해를 구합니다.")
                 st.success(f"**최종 정답:** $x = {root}$")
 
-        # [2. 이차방정식 - 정수 근]
         elif curr_type == "이차방정식 (하 - 정수 근)":
             r1, r2 = random.randint(-9, 9), random.randint(-9, 9)
             expr = (x - r1) * (x - r2)
@@ -134,7 +121,6 @@ if st.session_state.show_problems:
                 st.write("2️⃣ 일차식이 각각 $0$이 되는 $x$의 값을 찾습니다.")
                 st.success(f"**최종 정답:** $x = {r1}$ 또는 $x = {r2}$" if r1 != r2 else f"**최종 정답:** $x = {r1}$ (중근)")
 
-        # [3. 이차방정식 - 분수 근]
         elif curr_type == "이차방정식 (중 - 분수 근)":
             a, c = random.randint(2, 5), random.randint(2, 5)
             b, d = random.randint(-7, 7), random.randint(-7, 7)
@@ -157,7 +143,6 @@ if st.session_state.show_problems:
                 st.write("2️⃣ 일차식의 해를 각각 구하기 위해 이항 후 앞의 계수로 나눕니다.")
                 st.success(f"**최종 정답:** $x = {sp.latex(ans1)}$ 또는 $x = {sp.latex(ans2)}$" if ans1 != ans2 else f"**최종 정답:** $x = {sp.latex(ans1)}$ (중근)")
 
-        # [4. 이차방정식 - 근의 공식]
         elif curr_type == "이차방정식 (상 - 근의 공식)":
             a_val = random.choice([1, 2])
             b_val, c_val = random.randint(-5, 5), random.randint(-5, 5)
@@ -182,7 +167,6 @@ if st.session_state.show_problems:
                 st.latex(rf"x = \frac{{-({b_val}) \pm \sqrt{{({b_val})^2 - 4 \cdot ({a_val}) \cdot ({c_val})}}}}{{2 \cdot ({a_val})}}")
                 st.success(f"**최종 정답:** $x = {sp.latex(roots[0])}$ 또는 $x = {sp.latex(roots[1])}$")
 
-        # [5. 삼차방정식]
         elif curr_type == "삼차방정식":
             r1, r2, r3 = random.randint(-3, 3), random.randint(-3, 3), random.randint(-3, 3)
             expr = (x - r1) * (x - r2) * (x - r3)
@@ -204,15 +188,15 @@ if st.session_state.show_problems:
                 st.success(f"**최종 정답:** {roots_str_ui}")
 
     # -----------------------------------------------------------
-    # 다운로드 버튼
+    # ⭐ [업데이트] 웹 문서(HTML) 다운로드 버튼
     # -----------------------------------------------------------
     st.markdown("---")
-    with st.spinner('문제지와 해설지 PDF를 각각 예쁘게 굽는 중입니다... (약 4~5초 소요)'):
-        problem_pdf_file = create_pdf_document(st.session_state.saved_math_type, problems_for_pdf, is_solution=False)
-        solution_pdf_file = create_pdf_document(st.session_state.saved_math_type, solutions_for_pdf, is_solution=True)
+    with st.spinner('시험지 문서를 생성하는 중입니다...'):
+        problem_html_file = create_html_document(st.session_state.saved_math_type, problems_for_pdf, is_solution=False)
+        solution_html_file = create_html_document(st.session_state.saved_math_type, solutions_for_pdf, is_solution=True)
     
     col1, col2 = st.columns(2)
     with col1:
-        st.download_button("📄 [학생용] 문제지 PDF 다운로드", data=problem_pdf_file, file_name=f"문제지_{st.session_state.saved_math_type}.pdf", mime="application/pdf")
+        st.download_button("📄 [학생용] 문제지 다운로드", data=problem_html_file, file_name=f"문제지_{st.session_state.saved_math_type}.html", mime="text/html")
     with col2:
-        st.download_button("💡 [교사용] 해설지 PDF 다운로드", data=solution_pdf_file, file_name=f"해설지_{st.session_state.saved_math_type}.pdf", mime="application/pdf")
+        st.download_button("💡 [교사용] 해설지 다운로드", data=solution_html_file, file_name=f"해설지_{st.session_state.saved_math_type}.html", mime="text/html")
