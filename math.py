@@ -61,7 +61,7 @@ if 'run_id' not in st.session_state:
     st.session_state.saved_num_prob = 0
     st.session_state.show_problems = False
 
-st.title("🌟 수학 무한 문제 자동 생성기")
+st.title("🌟 수학 문제 자동 생성기")
 st.sidebar.header("⚙️ 출제 설정")
 
 math_type = st.sidebar.radio("출제 단원을 선택하세요", [
