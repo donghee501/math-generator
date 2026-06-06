@@ -1,16 +1,15 @@
 import streamlit as st
 import sympy as sp
 import random
-import platform
-import pdfkit
-# 🌟 외부 데이터 파일에서 스토리 템플릿 불러오기
 from data_pool import STORY_THEMES
 
-st.set_page_config(page_title="AI 수학 문제 생성기 V9.0", page_icon="🎨")
+st.set_page_config(page_title="AI 수학 문제 생성기", page_icon="🎨")
 x = sp.Symbol('x')
 
-# PDF 생성 함수
-def create_pdf_document(math_type, items, is_solution=False):
+# -----------------------------------------------------------
+# HTML 문서 생성 함수 (PDF 변환 과정 제거, 더 가볍고 빠름!)
+# -----------------------------------------------------------
+def create_html_document(math_type, items, is_solution=False):
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -20,16 +19,22 @@ def create_pdf_document(math_type, items, is_solution=False):
           src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
         </script>
         <style>
-            body {{ font-family: 'Malgun Gothic', sans-serif; padding: 40px; }}
+            @media print {{
+                body {{ padding: 0; margin: 20px; }}
+                .content-box, .solution-box {{ page-break-inside: avoid; }}
+                @page {{ margin: 15mm; }}
+            }}
+            body {{ font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif; padding: 40px; max-width: 800px; margin: auto; }}
             h1 {{ text-align: center; border-bottom: 2px solid black; padding-bottom: 15px; }}
             .header-info {{ text-align: right; margin-bottom: 30px; font-size: 18px; }}
-            .content-box {{ margin-bottom: 40px; font-size: 20px; line-height: 1.8; page-break-inside: avoid; }}
-            .solution-box {{ color: #0033cc; font-size: 20px; margin-top: 15px; line-height: 1.8; page-break-inside: avoid; }}
-            .MathJax_CHTML {{ font-size: 150% !important; }}
+            .content-box {{ margin-bottom: 40px; font-size: 20px; line-height: 1.8; }}
+            .solution-box {{ color: #0033cc; font-size: 20px; margin-top: 15px; line-height: 1.8; }}
+            .MathJax_CHTML {{ font-size: 130% !important; }}
         </style>
     </head>
     <body>
     """
+    
     if not is_solution:
         html_content += f"""
         <h1>수학 시험지: {math_type}</h1>
@@ -53,24 +58,18 @@ def create_pdf_document(math_type, items, is_solution=False):
             html_content += f'<div class="content-box"><b>[{i+1}번 해설]</b><div class="solution-box">{sol_html}</div></div>'
             
     html_content += "</body></html>"
-    
-    if platform.system() == "Windows":
-        path_wkhtmltopdf = r'C:\Users\USER\wkhtmltopdf\bin\wkhtmltopdf.exe' 
-        config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
-    else:
-        config = pdfkit.configuration(wkhtmltopdf='/usr/bin/wkhtmltopdf')
-    
-    options = dict(encoding="UTF-8", **{"javascript-delay": "2000", "enable-javascript": ""})
-    return pdfkit.from_string(html_content, False, configuration=config, options=options)
+    return html_content
 
+# -----------------------------------------------------------
 # 메인 UI
+# -----------------------------------------------------------
 if 'run_id' not in st.session_state:
     st.session_state.run_id = 0
     st.session_state.saved_math_type = ""
     st.session_state.saved_num_prob = 0
     st.session_state.show_problems = False
 
-st.title("🌟 수학 무한 문제 자동 생성기 V9.0")
+st.title("🌟 수학 무한 문제 자동 생성기")
 st.sidebar.header("⚙️ 출제 설정")
 st.sidebar.markdown("### 📖 단원 및 유형 선택")
 
@@ -98,7 +97,9 @@ if st.sidebar.button("🚀 문제지 생성하기"):
     st.session_state.saved_num_prob = num_prob
     st.session_state.show_problems = True
 
+# -----------------------------------------------------------
 # 문제 생성 로직
+# -----------------------------------------------------------
 if st.session_state.show_problems:
     random.seed(st.session_state.run_id)
     st.markdown("---")
@@ -108,7 +109,6 @@ if st.session_state.show_problems:
     solutions_for_pdf = []
     used_problems = set()
 
-    # ⭐ [업데이트] 중복 텍스트 방지를 위한 셔플 풀 준비
     if "스토리텔링" in st.session_state.saved_math_type:
         if "일차" in st.session_state.saved_math_type:
             current_pool = STORY_THEMES["일차방정식"].copy()
@@ -116,7 +116,7 @@ if st.session_state.show_problems:
             current_pool = STORY_THEMES["이차방정식"].copy()
         else:
             current_pool = STORY_THEMES["삼차방정식"].copy()
-        random.shuffle(current_pool) # 무작위로 순서 섞기
+        random.shuffle(current_pool)
 
     for i in range(1, st.session_state.saved_num_prob + 1):
         curr_type = st.session_state.saved_math_type
@@ -150,13 +150,12 @@ if st.session_state.show_problems:
             with st.expander(f"💡 {i}번 상세 풀이 및 정답"): 
                 st.success(f"**최종 정답:** $x = {sp.latex(ans)}$")
 
-        # ⭐ 1차 스토리텔링 (창고 연동 + 절대 비중복)
         elif curr_type == "일차방정식 (스토리텔링 융합) 🌟":
-            if not current_pool: # 혹시 문제 요청 수가 템플릿 수보다 많으면 다시 채우기
+            if not current_pool: 
                 current_pool = STORY_THEMES["일차방정식"].copy()
                 random.shuffle(current_pool)
             
-            theme = current_pool.pop() # 중복 없이 하나씩 꺼내기
+            theme = current_pool.pop() 
             x_val = random.randint(2, 12)
             a_val = random.randint(1, 10)
             b_val = x_val + a_val
@@ -225,7 +224,6 @@ if st.session_state.show_problems:
             with st.expander(f"💡 {i}번 상세 풀이 및 정답"): 
                 st.success(f"**최종 정답:** $x = {sp.latex(roots[0])}$ 또는 $x = {sp.latex(roots[1])}$")
 
-        # ⭐ 2차 스토리텔링 (창고 연동 + 절대 비중복)
         elif curr_type == "이차방정식 (스토리텔링 융합) 🌟":
             if not current_pool:
                 current_pool = STORY_THEMES["이차방정식"].copy()
@@ -269,7 +267,6 @@ if st.session_state.show_problems:
             with st.expander(f"💡 {i}번 상세 풀이 및 정답"): 
                 st.success(f"**최종 정답:** {roots_str_ui}")
 
-        # ⭐ 3차 스토리텔링 (창고 연동 + 절대 비중복)
         elif curr_type == "삼차방정식 (스토리텔링 융합) 🌟":
             if not current_pool:
                 current_pool = STORY_THEMES["삼차방정식"].copy()
@@ -277,7 +274,7 @@ if st.session_state.show_problems:
             
             theme = current_pool.pop()
             
-            if "cm 더" in theme["context"]: # 입체도형 문제
+            if "cm 더" in theme["context"] or "m 더" in theme["context"]: 
                 x_val = random.randint(3, 6) 
                 h_diff = random.choice([-2, -1, 1, 2])
                 h_val = x_val + h_diff
@@ -285,7 +282,7 @@ if st.session_state.show_problems:
                 word = "깁" if h_diff > 0 else "짧"
                 prob_text = theme["context"].format(abs_h_diff=abs(h_diff), word=word, vol=vol)
                 solutions_for_pdf.append(f"식: \\( x^2(x {'+' if h_diff>0 else '-'} {abs(h_diff)}) = {vol} \\)<br>정답: \\( x = {x_val} \\)")
-            else: # 수수께끼 문제
+            else: 
                 x_val = random.randint(3, 7)
                 vol = (x_val - 1) * x_val * (x_val + 1)
                 prob_text = theme["context"].format(vol=vol)
@@ -320,14 +317,18 @@ if st.session_state.show_problems:
                 if ox["a"] == "O": st.success(f"**정답: O**")
                 else: st.error(f"**정답: X**")
 
-    # 다운로드 버튼
+    # -----------------------------------------------------------
+    # 다운로드 버튼 (HTML 파일 다운로드로 완벽 변경)
+    # -----------------------------------------------------------
     st.markdown("---")
-    with st.spinner('PDF를 굽는 중...'):
-        problem_pdf_file = create_pdf_document(st.session_state.saved_math_type, problems_for_pdf, is_solution=False)
-        solution_pdf_file = create_pdf_document(st.session_state.saved_math_type, solutions_for_pdf, is_solution=True)
+    st.info("💡 **출력 꿀팁:** 다운로드한 HTML 파일을 열고 **인쇄(Ctrl+P) 버튼**을 눌러 **'PDF로 저장'**을 선택하시면 수식이 완벽하게 유지된 깔끔한 시험지가 완성됩니다!")
+    
+    with st.spinner('시험지를 준비하는 중...'):
+        problem_html = create_html_document(st.session_state.saved_math_type, problems_for_pdf, is_solution=False)
+        solution_html = create_html_document(st.session_state.saved_math_type, solutions_for_pdf, is_solution=True)
     
     col1, col2 = st.columns(2)
     with col1:
-        st.download_button("📄 문제지 PDF", data=problem_pdf_file, file_name=f"문제지.pdf", mime="application/pdf")
+        st.download_button("📄 [학생용] 문제지 다운로드", data=problem_html, file_name=f"문제지.html", mime="text/html")
     with col2:
-        st.download_button("💡 해설지 PDF", data=solution_pdf_file, file_name=f"해설지.pdf", mime="application/pdf")
+        st.download_button("💡 [교사용] 해설지 다운로드", data=solution_html, file_name=f"해설지.html", mime="text/html")
